@@ -8,6 +8,8 @@ This plugin is mostly complete, but is incredibly finicky and due to the way tha
 Personally, I have no idea how to resolve this. Windows APIs kinda suck and if you know how to fix it (or know some incredibly hacky but functional workaround) and are willing to help - PRs are greatly appreciated.
   
 The plugin also will receive multiple `PlaybackDataChanged` events, and this appears to just be how the API functions, and certain applications send more than others (I'm looking at you Spotify.).  
+  
+Final thing to note: I am incredibly confident that this *will not work under Linux (or macOS) whatsoever.* I could be wrong, and WINE could handle the exact things this plugin needs, but I fully doubt that it does, and I'm not going to test it. If it doesn't work, don't ever expect it to. I'd like for things to be entirely functional across all platforms, but unfortunately it's just this way sometimes. Such is life.
 &nbsp;
 ### Dependencies
 `NPSMLib`: `0.9.14` ([nuget](https://www.nuget.org/packages/NPSMLib))  
