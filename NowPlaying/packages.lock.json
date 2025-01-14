@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0-windows10.0.17763": {
+      "DalamudPackager": {
+        "type": "Direct",
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "bjT7XUlhIJSmsE/O76b7weUX+evvGQctbQB8aKXt94o+oPWxHpCepxAGMs7Thow3AzCyqWs7cOpp9/2wcgRRQA=="
+      },
+      "DotNet.ReproducibleBuilds": {
+        "type": "Direct",
+        "requested": "[1.2.25, )",
+        "resolved": "1.2.25",
+        "contentHash": "xCXiw7BCxHJ8pF6wPepRUddlh2dlQlbr81gXA72hdk4FLHkKXas7EH/n+fk5UCA/YfMqG1Z6XaPiUjDbUNBUzg=="
+      },
+      "NPSMLib": {
+        "type": "Direct",
+        "requested": "[0.9.14, )",
+        "resolved": "0.9.14",
+        "contentHash": "E2sS3CayxUEDHP1WH97XrH/ipvg+JQ9SSeUgstF4pTqh2peBh5UH0PAV+44prHqm9pRPwfsab8Sgc8AbKGTCBw=="
+      }
+    }
+  }
+}
