@@ -1,0 +1,12 @@
+{
+  "Author": "wompscode",
+  "Name": "NowPlaying",
+  "Punchline": "Play/pause/skip songs that are currently playing.",
+  "Description": "Play/pause/skip songs that are currently playing. Ideal for macro usage.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "music",
+    "background",
+    "utility"
+  ]
+}
