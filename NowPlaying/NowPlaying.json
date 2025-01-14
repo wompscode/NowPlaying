@@ -1,8 +1,8 @@
 {
   "Author": "wompscode",
   "Name": "NowPlaying",
-  "Punchline": "Play/pause/skip songs that are currently playing.",
-  "Description": "Play/pause/skip songs that are currently playing. Ideal for macro usage.",
+  "Punchline": "Play/pause/skip songs that are currently playing. (Windows only)",
+  "Description": "Play/pause/skip songs that are currently playing. Ideal for macro usage. (Windows only)",
   "ApplicableVersion": "any",
   "Tags": [
     "music",
