@@ -8,8 +8,8 @@ namespace NowPlaying;
 public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
-
-    public bool ShowInStatusBar { get; set; }= true;
+    public bool ShowInStatusBar { get; set; } = true;
+    
     // the below exist just to make saving less cumbersome
     public void Save()
     {
