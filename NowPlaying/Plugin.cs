@@ -16,23 +16,29 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
-
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
+
+    private readonly ServerInfoDisplay barDisplay;
+    public static bool ShowInStatusBar;
 
     public static string CurrentSong = "";
     public static string CurrentArtist = "";
     public static bool IsPaused;
     
     static readonly object LockObject = new object();
+    
     private static NowPlayingSessionManager? Manager;
     private static NowPlayingSession? Session;
     private static MediaPlaybackDataSource? Src;
-    private readonly ServerInfoDisplay barDisplay;
+    
+    private readonly bool isSet = false;
+    
     public Configuration Configuration { get; init; }
-    public static bool ShowInStatusBar;
+
     public Plugin()
     {
         PluginInterface.Create<Services>();
+        
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ShowInStatusBar = Configuration.ShowInStatusBar;
         
@@ -42,7 +48,7 @@ public sealed class Plugin : IDalamudPlugin
         });
         CommandManager.AddHandler("/nowplaying current", new CommandInfo(OnCommand)
         {
-            HelpMessage = "Print the current song to chat.."
+            HelpMessage = "Print the current song to chat."
         });
         CommandManager.AddHandler("/nowplaying next", new CommandInfo(OnCommand)
         {
@@ -66,12 +72,12 @@ public sealed class Plugin : IDalamudPlugin
         });
         
         barDisplay = new ServerInfoDisplay();
+        
         Manager = new NowPlayingSessionManager();
         Manager.SessionListChanged += OnSessionListChanged;
         OnSessionListChanged(null,null);
     }
 
-    private readonly bool isSet = false;
     private void OnSessionListChanged(object? sender, NowPlayingSessionManagerEventArgs? e)
     {
         barDisplay.Update();
@@ -142,6 +148,11 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         CommandManager.RemoveHandler("/nowplaying");
+        CommandManager.RemoveHandler("/nowplaying current");
+        CommandManager.RemoveHandler("/nowplaying next");
+        CommandManager.RemoveHandler("/nowplaying prev");
+        CommandManager.RemoveHandler("/nowplaying statusbar");
+        CommandManager.RemoveHandler("/nowplaying playpause");
         CommandManager.RemoveHandler("/npl");
         if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
         if(Src != null) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
@@ -150,11 +161,11 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
-        Log.Info(args);
+        Log.Debug(args);
 
         if (command == "/nowplaying" || command == "/npl")
         {
-            Log.Info("nowplaying command hit");
+            Log.Debug("nowplaying command hit");
             if (args.ToLower().StartsWith("next"))
             {
                 Log.Info("Skipping song..");
