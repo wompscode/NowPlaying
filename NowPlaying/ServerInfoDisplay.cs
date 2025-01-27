@@ -1,6 +1,5 @@
-﻿using System;
-using Dalamud.Game.Gui.Dtr;
-using Dalamud.Game.Text.SeStringHandling;
+﻿using Dalamud.Game.Gui.Dtr;
+// ReSharper disable StringLiteralTypo
 namespace NowPlaying;
 
 public class ServerInfoDisplay
@@ -21,6 +20,11 @@ public class ServerInfoDisplay
     public void UpdateDisplay(bool state)
     {
         Plugin.Log.Info(state ? "Enabled" : "Disabled");
+        if (Plugin.IsPaused && Plugin.HideOnPause)
+        {
+            entry.Shown = false;
+            return;
+        }
         entry.Shown = state;
     }
     public void Update()
@@ -33,6 +37,17 @@ public class ServerInfoDisplay
             entry.Shown = false;
             return;
         }
+
+        Plugin.Log.Debug($"HOP: {Plugin.HideOnPause}");
+        
+        if (Plugin.IsPaused && Plugin.HideOnPause)
+        {
+            Plugin.Log.Information("Hiding server bar info..");
+            entry.Shown = false;
+            return;
+        }
+        
+        Plugin.Log.Debug($"SISB: {Plugin.ShowInStatusBar}");
 
         entry.Shown = Plugin.ShowInStatusBar;
         var indicator = (Plugin.IsPaused ? "||" : ">");
