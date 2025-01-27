@@ -1,5 +1,4 @@
 ﻿using Dalamud.Configuration;
-using Dalamud.Plugin;
 using System;
 
 namespace NowPlaying;
@@ -9,8 +8,8 @@ public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
     public bool ShowInStatusBar { get; set; } = true;
-    
-    // the below exist just to make saving less cumbersome
+    public bool HideOnPause { get; set; } = true;
+
     public void Save()
     {
         Plugin.PluginInterface.SavePluginConfig(this);
