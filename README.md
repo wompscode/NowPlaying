@@ -3,9 +3,9 @@ Shows the currently playing song in your server info bar using [NPSMLib](https:/
 &nbsp;  
 
 ### Limitations & Jank
-This plugin is mostly complete, but is incredibly finicky and due to the way that Windows prioritises apps that use the SystemMediaTransportControl functionality, you might not be able to control/see the right media player output.  
+This plugin is mostly complete, ~~but is incredibly finicky and due to the way that Windows prioritises apps that use the SystemMediaTransportControl functionality, you might not be able to control/see the right media player output.~~  
 
-Personally, I have no idea how to resolve this. Windows APIs kinda suck and if you know how to fix it (or know some incredibly hacky but functional workaround) and are willing to help - PRs are greatly appreciated.
+~~Personally, I have no idea how to resolve this. Windows APIs kinda suck and if you know how to fix it (or know some incredibly hacky but functional workaround) and are willing to help - PRs are greatly appreciated.~~ The joke is on me. I fixed it by just letting you cycle through the current session list. Am I stupid for not thinking of this? A little bit.
   
 The plugin also will receive multiple `PlaybackDataChanged` events, and this appears to just be how the API functions, and certain applications send more than others (I'm looking at you Spotify.) (I'm not complaining about this specifically though, I'm just nitpicky that everything implements SMTC in their own stupid way, and not in a consistent across apps way).  
   
