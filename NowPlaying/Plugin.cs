@@ -27,6 +27,8 @@ public sealed class Plugin : IDalamudPlugin
     public static string CurrentSong = "";
     public static string CurrentArtist = "";
     public static bool IsPaused;
+
+    private bool isAttached = false;
     
     static readonly object LockObject = new object();
     
@@ -107,16 +109,19 @@ public sealed class Plugin : IDalamudPlugin
             if (SessionIndex >= Sessions.Length) SessionIndex = 0;
         }
 
-        if (Src != null) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+        if (Src != null)
+        {
+            Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+            isAttached = false;
+        }
         OnSessionListChanged(null, null);
     }
     
     private void OnSessionListChanged(object? sender, NowPlayingSessionManagerEventArgs? e)
     {
-        barDisplay.Update();
-        if (Manager == null) return;
-        
         Log.Debug("OnSessionListChanged hit.");
+        if (Manager == null) return;
+        barDisplay.Update();
         
         Sessions = Manager.GetSessions();
         
@@ -129,8 +134,12 @@ public sealed class Plugin : IDalamudPlugin
         Log.Debug("Src is set.");
         if (Src != null)
         {
+            if (isAttached) return;
+            isAttached = true;
+            
             Src.MediaPlaybackDataChanged += PlaybackDataChanged;
             PlaybackDataChanged(null, null);
+            
             Log.Debug("PlaybackDataChanged triggered.");
         }
         else
@@ -181,8 +190,10 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler("/nowplaying pause");
         CommandManager.RemoveHandler("/nowplaying cycle");
         CommandManager.RemoveHandler("/npl");
+        
         if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
         if(Src != null) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+        
         Configuration.Save();
     }
 
@@ -209,29 +220,70 @@ public sealed class Plugin : IDalamudPlugin
             {
                 case "next":
                     Log.Info("Skipping song..");
-                    keybd_event(0xB0, 0, 1, IntPtr.Zero); // Next song key
+                    if (Src != null)
+                    {
+                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Next);
+                    }
+                    else
+                    {
+                        if (!IsPaused)
+                        {
+                            keybd_event(0xB0, 0, 1, IntPtr.Zero); // Next song key
+                        }
+                    }
                     break;
                 case "prev":
                     Log.Info("Going back a song..");
-                    keybd_event(0xB1 , 0, 1, IntPtr.Zero); // Previous song key
+                    if (Src != null)
+                    {
+                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Previous);
+                    }
+                    else
+                    {
+                        if (!IsPaused)
+                        {
+                            keybd_event(0xB1 , 0, 1, IntPtr.Zero); // Previous song key
+                        }
+                    }
                     break;
                 case "play":
-                    if (IsPaused)
+                    Log.Information("Playing song..");
+                    if (Src != null)
                     {
-                        Log.Information("Playing song..");
-                        keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
+                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Play);
+                    }
+                    else
+                    {
+                        if (!IsPaused)
+                        {
+                            keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
+                        }
                     }
                     break;
                 case "pause":
-                    if (!IsPaused)
+                    Log.Information("Pausing song..");
+                    if (Src != null)
                     {
-                        Log.Information("Pausing song..");
-                        keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
+                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Pause);
+                    }
+                    else
+                    {
+                        if (!IsPaused)
+                        {
+                            keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
+                        }
                     }
                     break;
                 case "playpause":
                     Log.Info("Playing/pausing song..");
-                    keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
+                    if (Src != null)
+                    {
+                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.PlayPauseToggle);
+                    }
+                    else
+                    {
+                        keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
+                    }
                     break;
                 case "current":
                     Services.ChatGui.Print($"Now playing: {CurrentArtist} - {CurrentSong}");
