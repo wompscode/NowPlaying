@@ -5,11 +5,14 @@ namespace NowPlaying;
 public class ServerInfoDisplay
 {
     private readonly IDtrBarEntry entry;
+    private readonly Plugin instance;
     
-    public ServerInfoDisplay()
+    public ServerInfoDisplay(Plugin instance)
     {
         entry = Services.DtrBar.Get("NowPlaying");
         entry.Shown = Plugin.ShowInStatusBar;
+        this.instance = instance;
+        entry.OnClick = instance.CycleSession;
     }
 
     public void Dispose()
@@ -19,7 +22,7 @@ public class ServerInfoDisplay
 
     public void UpdateDisplay(bool state)
     {
-        Plugin.Log.Info(state ? "Enabled" : "Disabled");
+        Plugin.Log.Debug(state ? "Enabled" : "Disabled");
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
             entry.Shown = false;
@@ -42,7 +45,7 @@ public class ServerInfoDisplay
         
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
-            Plugin.Log.Information("Hiding server bar info..");
+            Plugin.Log.Debug("Hiding server bar info..");
             entry.Shown = false;
             return;
         }
