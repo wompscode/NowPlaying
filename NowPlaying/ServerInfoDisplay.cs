@@ -5,13 +5,11 @@ namespace NowPlaying;
 public class ServerInfoDisplay
 {
     private readonly IDtrBarEntry entry;
-    private readonly Plugin instance;
     
     public ServerInfoDisplay(Plugin instance)
     {
         entry = Services.DtrBar.Get("NowPlaying");
         entry.Shown = Plugin.ShowInStatusBar;
-        this.instance = instance;
         entry.OnClick = instance.CycleSession;
     }
 
@@ -22,7 +20,7 @@ public class ServerInfoDisplay
 
     public void UpdateDisplay(bool state)
     {
-        Plugin.Log.Debug(state ? "Enabled" : "Disabled");
+        Services.PluginLog.Debug(state ? "Enabled" : "Disabled");
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
             entry.Shown = false;
@@ -35,25 +33,28 @@ public class ServerInfoDisplay
         var song = Plugin.CurrentSong;
         var artist = Plugin.CurrentArtist;
 
-        if (string.IsNullOrEmpty(song) || string.IsNullOrEmpty(artist))
+        if (string.IsNullOrEmpty(song) && string.IsNullOrEmpty(artist))
         {
             entry.Shown = false;
             return;
         }
 
-        Plugin.Log.Debug($"HOP: {Plugin.HideOnPause}");
+        if (string.IsNullOrEmpty(song)) song = "n/a";
+        if (string.IsNullOrEmpty(artist)) artist = "n/a";
+
+        Services.PluginLog.Debug($"HOP: {Plugin.HideOnPause}");
         
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
-            Plugin.Log.Debug("Hiding server bar info..");
+            Services.PluginLog.Debug("Hiding server bar info..");
             entry.Shown = false;
             return;
         }
         
-        Plugin.Log.Debug($"SISB: {Plugin.ShowInStatusBar}");
+        Services.PluginLog.Debug($"SISB: {Plugin.ShowInStatusBar}");
 
         entry.Shown = Plugin.ShowInStatusBar;
-        var indicator = (Plugin.IsPaused ? "||" : ">");
+        var indicator = Plugin.IsPaused ? "||" : ">";
         
         var displayNonTruncated = $"{artist} - {song}";
         if (artist.Length > 18) artist = artist.Substring(0, 18) + "..";
