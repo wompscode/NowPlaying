@@ -115,7 +115,14 @@ public sealed class Plugin : IDalamudPlugin
 
         if (Src != null)
         {
-            Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+            try
+            {
+                Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+            }
+            catch 
+            {
+                Services.PluginLog.Error("Issue with unhooking Src.MediaPlaybackDataChanged.");
+            }
             isAttached = false;
         }
         OnSessionListChanged(null, null);
@@ -196,7 +203,14 @@ public sealed class Plugin : IDalamudPlugin
         Services.CommandManager.RemoveHandler("/npl");
         
         if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
-        if(Src != null) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+        try
+        {
+            if (Src != null && isAttached == true) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+        }
+        catch
+        {
+            Services.PluginLog.Error("Issue with unhooking Src.MediaPlaybackDataChanged.");
+        }
         barDisplay.Dispose();
         Configuration.Save();
     }
