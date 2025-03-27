@@ -119,9 +119,10 @@ public sealed class Plugin : IDalamudPlugin
             {
                 Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
             }
-            catch 
+            catch  (Exception e)
             {
-                Services.PluginLog.Error("Issue with unhooking Src.MediaPlaybackDataChanged.");
+                // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
+                Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
             }
             isAttached = false;
         }
@@ -205,11 +206,12 @@ public sealed class Plugin : IDalamudPlugin
         if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
         try
         {
-            if (Src != null && isAttached == true) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+            if (Src != null && isAttached) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
         }
-        catch
+        catch  (Exception e)
         {
-            Services.PluginLog.Error("Issue with unhooking Src.MediaPlaybackDataChanged.");
+            // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
+            Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
         }
         barDisplay.Dispose();
         Configuration.Save();
