@@ -32,6 +32,7 @@ public class ServerInfoDisplay
     {
         var song = Plugin.CurrentSong;
         var artist = Plugin.CurrentArtist;
+        var album = Plugin.CurrentAlbum;
 
         if (string.IsNullOrEmpty(song) && string.IsNullOrEmpty(artist))
         {
@@ -41,8 +42,9 @@ public class ServerInfoDisplay
 
         if (string.IsNullOrEmpty(song)) song = "n/a";
         if (string.IsNullOrEmpty(artist)) artist = "n/a";
+        if (string.IsNullOrEmpty(album)) album = "n/a";
 
-        Services.PluginLog.Debug($"HOP: {Plugin.HideOnPause}");
+        Services.PluginLog.Debug($"Hide on pause? {Plugin.HideOnPause}");
         
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
@@ -51,25 +53,18 @@ public class ServerInfoDisplay
             return;
         }
         
-        Services.PluginLog.Debug($"SISB: {Plugin.ShowInStatusBar}");
+        Services.PluginLog.Debug($"Should show in status bar? {Plugin.ShowInStatusBar}");
 
         entry.Shown = Plugin.ShowInStatusBar;
         var indicator = Plugin.IsPaused ? "||" : ">";
         
-        var displayNonTruncated = $"{artist} - {song}";
+        var tooltip = $"{song} by {artist}{(album == "n/a" ? "." : $" on {album}.")}";
+        
         if (artist.Length > 18) artist = artist.Substring(0, 18) + "..";
         if (song.Length > 24) song = song.Substring(0, 24) + "..";
-        var display = $"{artist} - {song}";
+        var display = $"♪ {indicator} {song} by {artist}";
 
-        if (display.Length >= 50)
-        {
-            entry.Text = indicator + " " + display.Substring(0, 50) + "...";
-            entry.Tooltip = displayNonTruncated;
-        }
-        else
-        {
-            entry.Text = indicator + " " + display;
-            entry.Tooltip = displayNonTruncated;
-        }
+        entry.Tooltip = tooltip;
+        entry.Text = display.Length >= 50 ? $"{display.Substring(0,50)}..." : $"{display}";
     }
 }
