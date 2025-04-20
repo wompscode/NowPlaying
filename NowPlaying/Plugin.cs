@@ -1,6 +1,6 @@
 ﻿namespace NowPlaying;
 /*
- * NowPlaying 1.3.0.0
+ * NowPlaying
  *      wompscode
  *
  * i make the things i want and put them up so others who want what i make can have what i make
@@ -8,6 +8,7 @@
 using System;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
+using Dalamud.Utility;
 using System.Runtime.InteropServices;
 using NPSMLib;
 
@@ -31,9 +32,13 @@ public sealed class Plugin : IDalamudPlugin
     // Publicly available song data
     public static string CurrentSong = "";
     public static string CurrentArtist = "";
+    public static string CurrentAlbum = "";
     public static bool IsPaused;
-
-    // Lock stuff
+    
+    // IsWine result
+    private static bool IsWine;
+    
+    // Single-thread lock + check bool
     private bool isAttached;
     static readonly object LockObject = new ();
 
@@ -46,8 +51,9 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
-        pluginInterface.Create<Services>();
+        IsWine = Util.IsWine();
         
+        pluginInterface.Create<Services>();
         Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ShowInStatusBar = Configuration.ShowInStatusBar;
         HideOnPause = Configuration.HideOnPause;
@@ -98,17 +104,22 @@ public sealed class Plugin : IDalamudPlugin
         });
         
         barDisplay = new ServerInfoDisplay(this);
-        
-        Manager = new NowPlayingSessionManager();
-        Manager.SessionListChanged += OnSessionListChanged;
-        OnSessionListChanged(null,null);
+        if (!IsWine)
+        {
+            Manager = new NowPlayingSessionManager();
+            Manager.SessionListChanged += OnSessionListChanged;
+            OnSessionListChanged(null,null);
+        }
     }
 
     public void CycleSession()
     {
+        if (IsWine) return;
+        
         if (Sessions != null)
         {
             Services.PluginLog.Debug($"sessions: {Sessions.Length}");
+            
             SessionIndex += 1;
             if (SessionIndex >= Sessions.Length) SessionIndex = 0;
         }
@@ -132,6 +143,8 @@ public sealed class Plugin : IDalamudPlugin
     private void OnSessionListChanged(object? sender, NowPlayingSessionManagerEventArgs? e)
     {
         Services.PluginLog.Debug("OnSessionListChanged hit.");
+        if (IsWine) return;
+
         if (Manager == null) return;
         barDisplay.Update();
         
@@ -151,13 +164,14 @@ public sealed class Plugin : IDalamudPlugin
         
         Src = Session.ActivateMediaPlaybackDataSource();
         Services.PluginLog.Debug("Src is set.");
+        
         if (Src != null)
         {
             if (isAttached) return;
-            isAttached = true;
             
             Src.MediaPlaybackDataChanged += PlaybackDataChanged;
             PlaybackDataChanged(null, null);
+            isAttached = true;
             
             Services.PluginLog.Debug("PlaybackDataChanged triggered.");
         }
@@ -170,7 +184,8 @@ public sealed class Plugin : IDalamudPlugin
     private void PlaybackDataChanged(object? sender, MediaPlaybackDataChangedArgs? e)
     {
         Services.PluginLog.Debug("PlaybackDataChanged hit.");
-
+        if (IsWine) return;
+        
         if (Session != null)
         {
             lock (LockObject)
@@ -179,10 +194,14 @@ public sealed class Plugin : IDalamudPlugin
                 {
                     var mediaDetails = Src.GetMediaObjectInfo();
                     var mediaPlaybackInfo = Src.GetMediaPlaybackInfo();
+                    
+                    Services.PluginLog.Debug($"artist: {mediaDetails.Artist}, title: {mediaDetails.Title}, album: {mediaDetails.AlbumTitle}");
+                    
                     CurrentArtist = mediaDetails.Artist;
                     CurrentSong = mediaDetails.Title;
-                    Services.PluginLog.Debug($"{mediaDetails.Artist} - {mediaDetails.Title}");
+                    CurrentAlbum = mediaDetails.AlbumTitle;
                     IsPaused = mediaPlaybackInfo.PlaybackState == MediaPlaybackState.Paused;
+                    
                     barDisplay.Update();
                 }
             }
@@ -209,16 +228,19 @@ public sealed class Plugin : IDalamudPlugin
         Services.CommandManager.RemoveHandler("/nowplaying pause");
         Services.CommandManager.RemoveHandler("/nowplaying cycle");
         Services.CommandManager.RemoveHandler("/npl");
-        
-        if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
-        try
+
+        if (!IsWine)
         {
-            if (Src != null && isAttached) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
-        }
-        catch  (Exception e)
-        {
-            // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
-            Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
+            if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
+            try
+            {
+                if (Src != null && isAttached) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+            }
+            catch  (Exception e)
+            {
+                // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
+                Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
+            }
         }
         barDisplay.Dispose();
         Configuration.Save();
@@ -226,14 +248,17 @@ public sealed class Plugin : IDalamudPlugin
 
     private void CommandHandler(string command, string args)
     {
-        Services.PluginLog.Debug(args);
-
         string[] argsSplit = args.Split(' ');
         
         if (command == "/nowplaying" || command == "/npl")
         {
             Services.PluginLog.Debug("nowplaying command hit");
-
+            if (IsWine)
+            {
+                Services.ChatGui.Print("NowPlaying only works under Windows. This plugin will do nothing as it has detected you are running from within a WINE context.");
+                return;
+            }
+            
             if (argsSplit.Length < 1 || string.IsNullOrEmpty(args))
             {
                 Services.PluginLog.Debug("No arguments.");
