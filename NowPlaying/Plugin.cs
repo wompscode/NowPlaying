@@ -137,8 +137,15 @@ public sealed class Plugin : IDalamudPlugin
         
         Sessions = Manager.GetSessions();
         
+        if (Sessions.Length <= 0)
+        {
+            // I don't know how I never thought about this. I've always got Spotify running, so I figure at no point did I go "hey, maybe I should check if there are any sessions at all.". Oh well.
+            Services.PluginLog.Info("No sessions found, not continuing..");
+            return;
+        } 
+        
         if (SessionIndex >= Sessions.Length) SessionIndex = 0;
-
+        
         Session = Sessions[SessionIndex];
         Services.PluginLog.Debug("Session is set.");
         
