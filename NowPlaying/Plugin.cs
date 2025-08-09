@@ -1,15 +1,14 @@
-﻿namespace NowPlaying;
+﻿
+namespace NowPlaying;
 /*
  * NowPlaying
- *      wompscode
- *
- * i make the things i want and put them up so others who want what i make can have what i make
  */
 using System;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Utility;
 using System.Runtime.InteropServices;
+using Dalamud.Game.Gui.Dtr;
 using NPSMLib;
 
 // ReSharper disable StringLiteralTypo
@@ -112,14 +111,44 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
+    public void CycleSession(DtrInteractionEvent interactionEvent)
+    {
+        if (IsWine) return;
+
+        if (interactionEvent.ClickType == MouseClickType.Left)
+        {
+            if (Sessions != null)
+            {
+                Services.PluginLog.Verbose($"sessions: {Sessions.Length}");
+            
+                SessionIndex += 1;
+                if (SessionIndex >= Sessions.Length) SessionIndex = 0;
+            }
+
+            if (Src != null)
+            {
+                try
+                {
+                    Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
+                }
+                catch  (Exception e)
+                {
+                    // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
+                    Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
+                }
+                isAttached = false;
+            }
+            OnSessionListChanged(null, null);
+        }
+    }
     public void CycleSession()
     {
         if (IsWine) return;
-        
+
         if (Sessions != null)
         {
-            Services.PluginLog.Debug($"sessions: {Sessions.Length}");
-            
+            Services.PluginLog.Verbose($"sessions: {Sessions.Length}");
+        
             SessionIndex += 1;
             if (SessionIndex >= Sessions.Length) SessionIndex = 0;
         }
@@ -139,10 +168,10 @@ public sealed class Plugin : IDalamudPlugin
         }
         OnSessionListChanged(null, null);
     }
-    
+
     private void OnSessionListChanged(object? sender, NowPlayingSessionManagerEventArgs? e)
     {
-        Services.PluginLog.Debug("OnSessionListChanged hit.");
+        Services.PluginLog.Verbose("OnSessionListChanged hit.");
         if (IsWine) return;
 
         if (Manager == null) return;
@@ -153,7 +182,7 @@ public sealed class Plugin : IDalamudPlugin
         if (Sessions.Length <= 0)
         {
             // I don't know how I never thought about this. I've always got Spotify running, so I figure at no point did I go "hey, maybe I should check if there are any sessions at all.". Oh well.
-            Services.PluginLog.Info("No sessions found, not continuing..");
+            Services.PluginLog.Verbose("No sessions found, not continuing..");
             return;
         } 
         
@@ -173,17 +202,17 @@ public sealed class Plugin : IDalamudPlugin
             PlaybackDataChanged(null, null);
             isAttached = true;
             
-            Services.PluginLog.Debug("PlaybackDataChanged triggered.");
+            Services.PluginLog.Verbose("PlaybackDataChanged triggered.");
         }
         else
         {
-            Services.PluginLog.Debug("Src is null, no session was ever set.");
+            Services.PluginLog.Verbose("Src is null, no session was ever set.");
         }
     }
 
     private void PlaybackDataChanged(object? sender, MediaPlaybackDataChangedArgs? e)
     {
-        Services.PluginLog.Debug("PlaybackDataChanged hit.");
+        Services.PluginLog.Verbose("PlaybackDataChanged hit.");
         if (IsWine) return;
         
         if (Session != null)
@@ -195,7 +224,7 @@ public sealed class Plugin : IDalamudPlugin
                     var mediaDetails = Src.GetMediaObjectInfo();
                     var mediaPlaybackInfo = Src.GetMediaPlaybackInfo();
                     
-                    Services.PluginLog.Debug($"artist: {mediaDetails.Artist}, title: {mediaDetails.Title}, album: {mediaDetails.AlbumTitle}");
+                    Services.PluginLog.Verbose($"artist: {mediaDetails.Artist}, title: {mediaDetails.Title}, album: {mediaDetails.AlbumTitle}");
                     
                     CurrentArtist = mediaDetails.Artist;
                     CurrentSong = mediaDetails.Title;
@@ -208,7 +237,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         else
         {
-            Services.PluginLog.Debug("Session is null, so assume player shut.");
+            Services.PluginLog.Verbose("Session is null, so assume player shut.");
             CurrentArtist = "";
             CurrentSong = "";
             barDisplay.Update();
@@ -252,7 +281,7 @@ public sealed class Plugin : IDalamudPlugin
         
         if (command == "/nowplaying" || command == "/npl")
         {
-            Services.PluginLog.Debug("nowplaying command hit");
+            Services.PluginLog.Verbose("nowplaying command hit");
             if (IsWine)
             {
                 Services.ChatGui.Print("NowPlaying only works under Windows. This plugin will do nothing as it has detected you are running from within a WINE context.");
@@ -261,17 +290,17 @@ public sealed class Plugin : IDalamudPlugin
             
             if (argsSplit.Length < 1 || string.IsNullOrEmpty(args))
             {
-                Services.PluginLog.Debug("No arguments.");
+                Services.PluginLog.Verbose("No arguments.");
                 return;
             }
 
             string subcommand = argsSplit[0].ToLower();
-            Services.PluginLog.Debug($"subcommand: {subcommand}");
+            Services.PluginLog.Verbose($"subcommand: {subcommand}");
 
             switch (subcommand)
             {
                 case "next":
-                    Services.PluginLog.Info("Skipping song..");
+                    Services.PluginLog.Verbose("Skipping song..");
                     if (Src != null)
                     {
                         Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Next);
@@ -285,7 +314,7 @@ public sealed class Plugin : IDalamudPlugin
                     }
                     break;
                 case "prev":
-                    Services.PluginLog.Info("Going back a song..");
+                    Services.PluginLog.Verbose("Going back a song..");
                     if (Src != null)
                     {
                         Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Previous);
@@ -299,7 +328,7 @@ public sealed class Plugin : IDalamudPlugin
                     }
                     break;
                 case "play":
-                    Services.PluginLog.Information("Playing song..");
+                    Services.PluginLog.Verbose("Playing song..");
                     if (Src != null)
                     {
                         Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Play);
@@ -313,7 +342,7 @@ public sealed class Plugin : IDalamudPlugin
                     }
                     break;
                 case "pause":
-                    Services.PluginLog.Information("Pausing song..");
+                    Services.PluginLog.Verbose("Pausing song..");
                     if (Src != null)
                     {
                         Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Pause);
@@ -327,7 +356,7 @@ public sealed class Plugin : IDalamudPlugin
                     }
                     break;
                 case "playpause":
-                    Services.PluginLog.Info("Playing/pausing song..");
+                    Services.PluginLog.Verbose("Playing/pausing song..");
                     if (Src != null)
                     {
                         Src.SendMediaPlaybackCommand(MediaPlaybackCommands.PlayPauseToggle);
@@ -343,7 +372,7 @@ public sealed class Plugin : IDalamudPlugin
                 case "statusbar":
                     Configuration.ShowInStatusBar = !ShowInStatusBar;
                     ShowInStatusBar = Configuration.ShowInStatusBar;
-                    Services.PluginLog.Debug($"{ShowInStatusBar}, {Configuration.ShowInStatusBar}");
+                    Services.PluginLog.Verbose($"{ShowInStatusBar}, {Configuration.ShowInStatusBar}");
                     Configuration.Save();
                     Services.ChatGui.Print($"{(ShowInStatusBar ? "Toggled server info bar display on." : "Toggled server info bar display off.")}");
                     barDisplay.UpdateDisplay(ShowInStatusBar);
@@ -351,7 +380,7 @@ public sealed class Plugin : IDalamudPlugin
                 case "hideonpause":
                     Configuration.HideOnPause = !HideOnPause;
                     HideOnPause = Configuration.HideOnPause;
-                    Services.PluginLog.Debug($"{HideOnPause}, {Configuration.HideOnPause}");
+                    Services.PluginLog.Verbose($"{HideOnPause}, {Configuration.HideOnPause}");
                     Configuration.Save();
                     Services.ChatGui.Print($"{(HideOnPause ? "Toggled Hide on Pause on." : "Toggled Hide on Pause off.")}");
                     break;
