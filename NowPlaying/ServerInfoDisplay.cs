@@ -20,7 +20,7 @@ public class ServerInfoDisplay
 
     public void UpdateDisplay(bool state)
     {
-        Services.PluginLog.Debug(state ? "Enabled" : "Disabled");
+        Services.PluginLog.Verbose(state ? "Enabled" : "Disabled");
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
             entry.Shown = false;
@@ -44,16 +44,16 @@ public class ServerInfoDisplay
         if (string.IsNullOrEmpty(artist)) artist = "n/a";
         if (string.IsNullOrEmpty(album)) album = "n/a";
 
-        Services.PluginLog.Debug($"Hide on pause? {Plugin.HideOnPause}");
+        Services.PluginLog.Verbose($"Hide on pause? {Plugin.HideOnPause}");
         
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
-            Services.PluginLog.Debug("Hiding server bar info..");
+            Services.PluginLog.Verbose("Hiding server bar info..");
             entry.Shown = false;
             return;
         }
         
-        Services.PluginLog.Debug($"Should show in status bar? {Plugin.ShowInStatusBar}");
+        Services.PluginLog.Verbose($"Should show in status bar? {Plugin.ShowInStatusBar}");
 
         entry.Shown = Plugin.ShowInStatusBar;
         var indicator = Plugin.IsPaused ? "||" : ">";
