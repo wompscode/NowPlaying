@@ -10,7 +10,7 @@ public class ServerInfoDisplay
     {
         entry = Services.DtrBar.Get("NowPlaying");
         entry.Shown = Plugin.ShowInStatusBar;
-        entry.OnClick = instance.CycleSession;
+        entry.OnClick = instance.CycleSessionDtr;
     }
 
     public void Dispose()
@@ -20,7 +20,6 @@ public class ServerInfoDisplay
 
     public void UpdateDisplay(bool state)
     {
-        Services.PluginLog.Verbose(state ? "Enabled" : "Disabled");
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
             entry.Shown = false;
@@ -44,27 +43,30 @@ public class ServerInfoDisplay
         if (string.IsNullOrEmpty(artist)) artist = "n/a";
         if (string.IsNullOrEmpty(album)) album = "n/a";
 
-        Services.PluginLog.Verbose($"Hide on pause? {Plugin.HideOnPause}");
-        
         if (Plugin.IsPaused && Plugin.HideOnPause)
         {
-            Services.PluginLog.Verbose("Hiding server bar info..");
             entry.Shown = false;
             return;
         }
         
-        Services.PluginLog.Verbose($"Should show in status bar? {Plugin.ShowInStatusBar}");
-
         entry.Shown = Plugin.ShowInStatusBar;
         var indicator = Plugin.IsPaused ? "||" : ">";
         
         var tooltip = $"{song} by {artist}{(album == "n/a" ? "." : $" on {album}.")}";
-        
-        if (artist.Length > 18) artist = artist.Substring(0, 18) + "..";
-        if (song.Length > 24) song = song.Substring(0, 24) + "..";
+
+        if (artist.Length > Plugin.MaxArtistChars && Plugin.Truncate) artist = artist.Substring(0, Plugin.MaxArtistChars) + "..";
+        if (song.Length > Plugin.MaxSongChars && Plugin.Truncate) song = song.Substring(0, Plugin.MaxSongChars) + "..";
+        int maxFullLength = Plugin.MaxSongChars + Plugin.MaxArtistChars + 4;
         var display = $"♪ {indicator} {song} by {artist}";
 
         entry.Tooltip = tooltip;
-        entry.Text = display.Length >= 50 ? $"{display.Substring(0,50)}..." : $"{display}";
+        if (Plugin.Truncate)
+        {
+            entry.Text = display.Length >= maxFullLength ? $"{display.Substring(0, maxFullLength)}.." : $"{display}";
+        }
+        else
+        {
+            entry.Text = $"{display}";
+        }
     }
 }
