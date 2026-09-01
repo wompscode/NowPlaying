@@ -1,14 +1,14 @@
-﻿namespace NowPlaying;
-
-using System;
+﻿using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
-
-using NPSMLib;
-
 using Dalamud.Game.Command;
+using Dalamud.Game.Config;
 using Dalamud.Plugin;
 using Dalamud.Utility;
 using Dalamud.Game.Gui.Dtr;
+using NowPlaying.MediaControllers;
+
+namespace NowPlaying;
 
 // ReSharper disable StringLiteralTypo
 // ReSharper disable IdentifierTypo
@@ -27,29 +27,23 @@ public sealed class Plugin : IDalamudPlugin
     // Config options
     public static bool ShowInStatusBar;
     public static bool HideOnPause;
+    public static bool MuteBgmOnPlay;
     public static bool Truncate;
     public static int  MaxSongChars;
     public static int  MaxArtistChars;
 
     // Song data
-    public static string CurrentSong = "";
-    public static string CurrentArtist = "";
-    public static string CurrentAlbum = "";
-    public static bool   IsPaused;
+    public static string CurrentSong => MediaController?.CurrentSong ?? string.Empty;
+    public static string CurrentArtist => MediaController?.CurrentArtist ?? string.Empty;
+    public static string CurrentAlbum => MediaController?.CurrentAlbum ?? string.Empty;
+    public static bool IsPaused => MediaController?.IsPaused ?? true;
     
     // IsWine result
     private static bool IsWine;
+    private static IMediaController? MediaController;
     
-    // Single-thread lock + check bool
-    private bool isAttached;
-    static readonly object LockObject = new ();
-
-    // SMTC
-    private static NowPlayingSessionManager? Manager;
-    private static NowPlayingSession? Session;
-    private static MediaPlaybackDataSource? Src;
-    public static NowPlayingSession[]? Sessions;
-    public static int SessionIndex;
+    // mute handling
+    private bool mutedGame;
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -59,6 +53,7 @@ public sealed class Plugin : IDalamudPlugin
         Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ShowInStatusBar = Configuration.ShowInStatusBar;
         HideOnPause = Configuration.HideOnPause;
+        MuteBgmOnPlay = Configuration.MuteBgmOnPlay;
         Truncate = Configuration.Truncate;
         MaxSongChars = Configuration.MaxSongChars;
         MaxArtistChars = Configuration.MaxArtistChars;
@@ -115,18 +110,41 @@ public sealed class Plugin : IDalamudPlugin
         {
             HelpMessage = "Cycle between active players."
         });
+        Services.CommandManager.AddHandler("/nowplaying mutebgmonplay", new CommandInfo(CommandHandler)
+        {
+            HelpMessage = "Whether to mute the game's BGM while music is playing.",
+        });
         Services.CommandManager.AddHandler("/npl", new CommandInfo(CommandHandler)
         {
             HelpMessage = "Alias for /nowplaying. Supports all the same arguments."
         });
         
         dtrDisplay = new ServerInfoDisplay(this);
-        if (!IsWine)
+
+        if (IsWine)
+            MediaController = new PlayerctlMediaController();
+        else
+            MediaController = new NpsmMediaController();
+
+        MediaController.OnUpdated += OnMediaControllerUpdated;
+        MediaController.Start();
+    }
+
+    private void OnMediaControllerUpdated(object? sender, EventArgs args)
+    {
+        if (!IsPaused && MuteBgmOnPlay && Services.GameConfig.TryGet(SystemConfigOption.IsSndBgm, out bool muted) && !muted)
         {
-            Manager = new NowPlayingSessionManager();
-            Manager.SessionListChanged += OnSessionListChanged;
-            OnSessionListChanged(null,null);
+            Services.GameConfig.Set(SystemConfigOption.IsSndBgm, true);
+            mutedGame = true;
         }
+
+        if (IsPaused && MuteBgmOnPlay && mutedGame)
+        {
+            Services.GameConfig.Set(SystemConfigOption.IsSndBgm, false);
+            mutedGame = false;
+        }
+        
+        dtrDisplay.Update();
     }
 
     public void CycleSessionDtr(DtrInteractionEvent interactionEvent)
@@ -134,97 +152,9 @@ public sealed class Plugin : IDalamudPlugin
         CycleSession();
     }
     
-    public void CycleSession()
+    public static void CycleSession()
     {
-        if (IsWine) return;
-
-        if (Sessions != null)
-        {
-            SessionIndex += 1;
-            if (SessionIndex >= Sessions.Length) SessionIndex = 0;
-        }
-
-        if (Src != null)
-        {
-            try
-            {
-                Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
-            }
-            catch  (Exception e)
-            {
-                // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
-                Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
-            }
-            isAttached = false;
-        }
-        OnSessionListChanged(null, null);
-    }
-    private void OnSessionListChanged(object? sender, NowPlayingSessionManagerEventArgs? e)
-    {
-        if (IsWine) return;
-
-        if (Manager == null) return;
-        dtrDisplay.Update();
-        
-        Sessions = Manager.GetSessions();
-        
-        // I don't know how I never thought about this. I've always got Spotify running, so I figure at no point did I go "hey, maybe I should check if there are any sessions at all.". Oh well.
-        if (Sessions.Length <= 0)
-            return;
-        
-        if (SessionIndex >= Sessions.Length) SessionIndex = 0;
-        
-        Session = Sessions[SessionIndex];
-        Services.PluginLog.Debug("Session is set.");
-        
-        Src = Session.ActivateMediaPlaybackDataSource();
-        Services.PluginLog.Debug("Src is set.");
-        
-        if (Src != null)
-        {
-            if (isAttached) return;
-            
-            Src.MediaPlaybackDataChanged += PlaybackDataChanged;
-            PlaybackDataChanged(null, null);
-            isAttached = true;
-            
-            Services.PluginLog.Verbose("PlaybackDataChanged triggered.");
-        }
-        else
-        {
-            Services.PluginLog.Verbose("Src is null, no session was ever set.");
-        }
-    }
-
-    private void PlaybackDataChanged(object? sender, MediaPlaybackDataChangedArgs? e)
-    {
-        if (IsWine) return;
-        
-        if (Session != null)
-        {
-            lock (LockObject)
-            {
-                if (Src != null)
-                {
-                    var mediaDetails = Src.GetMediaObjectInfo();
-                    var mediaPlaybackInfo = Src.GetMediaPlaybackInfo();
-                    
-                    CurrentArtist = mediaDetails.Artist;
-                    CurrentSong = mediaDetails.Title;
-                    CurrentAlbum = mediaDetails.AlbumTitle;
-                    IsPaused = mediaPlaybackInfo.PlaybackState == MediaPlaybackState.Paused;
-                    
-                    dtrDisplay.Update();
-                }
-            }
-        }
-        else
-        {
-            Services.PluginLog.Verbose("Session is null, so assume player shut.");
-            CurrentArtist = "";
-            CurrentSong = "";
-            dtrDisplay.Update();
-        }
+        MediaController?.CycleSession();
     }
 
     public void Dispose()
@@ -242,21 +172,13 @@ public sealed class Plugin : IDalamudPlugin
         Services.CommandManager.RemoveHandler("/nowplaying play");
         Services.CommandManager.RemoveHandler("/nowplaying pause");
         Services.CommandManager.RemoveHandler("/nowplaying cycle");
+        Services.CommandManager.RemoveHandler("/nowplaying mutebgmonplay");
         Services.CommandManager.RemoveHandler("/npl");
-
-        if (!IsWine)
-        {
-            if(Manager != null) Manager.SessionListChanged -= OnSessionListChanged;
-            try
-            {
-                if (Src != null && isAttached) Src.MediaPlaybackDataChanged -= PlaybackDataChanged;
-            }
-            catch  (Exception e)
-            {
-                // might not be the same source as it was before so if we try to unhook, it'll get upset but it largely can be ignored. i dont care. it works.
-                Services.PluginLog.Warning("Issue with unhooking Src.MediaPlaybackDataChanged, this error can likely be ignored as the playback source just likely was closed (error: {0}).", e.Message);
-            }
-        }
+        
+        if (MuteBgmOnPlay && mutedGame)
+            Services.GameConfig.Set(SystemConfigOption.IsSndBgm, false);
+        
+        MediaController?.Dispose();
         dtrDisplay.Dispose();
         Configuration.Save();
     }
@@ -267,12 +189,6 @@ public sealed class Plugin : IDalamudPlugin
         
         if (command == "/nowplaying" || command == "/npl")
         {
-            if (IsWine)
-            {
-                    Services.ChatGui.Print("NowPlaying only works under Windows. This plugin will do nothing as it has detected you are running from within a WINE environment. Sorry!");
-                return;
-            }
-
             if (argsSplit.Length < 1 || string.IsNullOrEmpty(args))
             {
                     Services.ChatGui.Print("[NowPlaying] valid subcommands: current, next, prev, play, pause, playpause, sb, hop, msc <int>, mac <int>, trunc.");
@@ -284,66 +200,24 @@ public sealed class Plugin : IDalamudPlugin
             switch (subcommand)
             {
                 case "next":
-                    if (Src != null)
-                    {
-                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Next);
-                    }
-                    else
-                    {
-                        if (!IsPaused)
-                        {
-                            keybd_event(0xB0, 0, 1, IntPtr.Zero); // Next song key
-                        }
-                    }
+                    if ((MediaController == null || !MediaController.TryNext()) && !IsPaused)
+                        keybd_event(0xB0, 0, 1, IntPtr.Zero); // Next song key
                     break;
                 case "prev":
-                    if (Src != null)
-                    {
-                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Previous);
-                    }
-                    else
-                    {
-                        if (!IsPaused)
-                        {
-                            keybd_event(0xB1 , 0, 1, IntPtr.Zero); // Previous song key
-                        }
-                    }
+                    if ((MediaController == null || !MediaController.TryPrevious()) && !IsPaused)
+                        keybd_event(0xB1 , 0, 1, IntPtr.Zero); // Previous song key
                     break;
                 case "play":
-                    if (Src != null)
-                    {
-                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Play);
-                    }
-                    else
-                    {
-                        if (!IsPaused)
-                        {
-                            keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
-                        }
-                    }
+                    if ((MediaController == null || !MediaController.TryPlay()) && IsPaused)
+                        keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
                     break;
                 case "pause":
-                    if (Src != null)
-                    {
-                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.Pause);
-                    }
-                    else
-                    {
-                        if (!IsPaused)
-                        {
-                            keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
-                        }
-                    }
+                    if ((MediaController == null || !MediaController.TryPause()) && !IsPaused)
+                        keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
                     break;
                 case "playpause":
-                    if (Src != null)
-                    {
-                        Src.SendMediaPlaybackCommand(MediaPlaybackCommands.PlayPauseToggle);
-                    }
-                    else
-                    {
+                    if (MediaController == null || !MediaController.TryPlayPauseToggle())
                         keybd_event(0xB3 , 0, 1, IntPtr.Zero); // Play pause key
-                    }
                     break;
                 case "current":
                         Services.ChatGui.Print($"[NowPlaying] {CurrentArtist} - {CurrentSong}");
@@ -411,8 +285,18 @@ public sealed class Plugin : IDalamudPlugin
                     }
                     break;
                 case "cycle":
-                        CycleSession();
+                    CycleSession();
                     break;
+                case "mutebgmonplay":
+                    MuteBgmOnPlay = Configuration.MuteBgmOnPlay ^= true;
+                    Configuration.Save();
+                    
+                    if (MuteBgmOnPlay)
+                        Services.ChatGui.Print("[NowPlaying] Enabled muting game BGM when playing media.");
+                    else
+                        Services.ChatGui.Print("[NowPlaying] Disabled muting game BGM when playing media.");
+                    break;
+                    
             }            
         }
     }
