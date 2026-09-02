@@ -91,19 +91,19 @@ public class PlayerctlMediaController : IMediaController
         GC.SuppressFinalize(this);
     }
 
-    private static (string, string, string) ReadNameOwnerChangedMessage(Message message, object? state)
+    private static (string, string, string)? ReadNameOwnerChangedMessage(Message message, object? state)
     {
         if (message.Signature.Length != 3
             || message.Signature[0] != 's'
             || message.Signature[1] != 's'
             || message.Signature[2] != 's')
-            throw new Exception("Unexpected signature for NameOwnerChanged, expected 'sss'");
+            return null;
                 
         var reader = message.GetBodyReader();
         var name = reader.ReadString();
 
         if (!name.StartsWith("org.mpris.MediaPlayer2."))
-            throw new Exception("don't care about non-mpris services");
+            return null;
                 
         var oldOwner = reader.ReadString();
         var newOwner = reader.ReadString();
@@ -111,12 +111,10 @@ public class PlayerctlMediaController : IMediaController
         return (name, oldOwner, newOwner);
     }
 
-    private async ValueTask HandleNameOwnerChangedSignal(Notification<(string, string, string)> notification)
+    private async ValueTask HandleNameOwnerChangedSignal(Notification<(string, string, string)?> notification)
     {
-        if (!notification.HasValue)
+        if (!notification.HasValue || notification.Value is not var (name, oldOwner, newOwner))
             return;
-
-        var (name, oldOwner, newOwner) = notification.Value;
 
         // ReSharper disable once MethodSupportsCancellation
         await lockObject.WaitAsync();
