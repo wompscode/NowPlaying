@@ -1,8 +1,8 @@
 {
   "Author": "wompscode",
   "Name": "NowPlaying",
-  "Punchline": "Display what is playing in your server bar, and play/pause/skip. (Windows only)",
-  "Description": "Display what is playing in your server bar, and play/pause/skip. Great with macros! (--> Windows only <--)",
+  "Punchline": "Display what is playing in your server bar, and play/pause/skip.",
+  "Description": "Display what is playing in your server bar, and play/pause/skip. Great with macros!",
   "ApplicableVersion": "any",
   "Tags": [
     "music",

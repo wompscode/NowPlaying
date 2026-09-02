@@ -10,5 +10,10 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NPSMLib" Version="0.9.14" />
+    <PackageReference Include="Tmds.DBus.Generator" Version="0.95.0" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="dbus-xml/org.mpris.MediaPlayer2.Player.xml" Namespace="Mpris.DBus" DBusGeneratorMode="Proxy" />
   </ItemGroup>
 </Project>

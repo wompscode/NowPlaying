@@ -19,6 +19,18 @@
         "requested": "[0.9.14, )",
         "resolved": "0.9.14",
         "contentHash": "E2sS3CayxUEDHP1WH97XrH/ipvg+JQ9SSeUgstF4pTqh2peBh5UH0PAV+44prHqm9pRPwfsab8Sgc8AbKGTCBw=="
+      },
+      "Tmds.DBus.Generator": {
+        "type": "Direct",
+        "requested": "[0.95.0, )",
+        "resolved": "0.95.0",
+        "contentHash": "m95NuLds61L8nXUKg4BOTxVedBrmqDzD+JxIJcDFwIonOI8Jqv0ovUzeK6FKOog4wzLStd35gd1pnGT0d5iLpg=="
+      },
+      "Tmds.DBus.Protocol": {
+        "type": "Direct",
+        "requested": "[0.95.0, )",
+        "resolved": "0.95.0",
+        "contentHash": "qsC7o0FVMB/j+3Zt0ppoORlpWticKsHMN5NFG6egiUz3yYspqiV/3TxSK9iuitg1w6IYbMcwelPkLgeE8T074w=="
       }
     }
   }
