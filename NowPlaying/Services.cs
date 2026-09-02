@@ -16,5 +16,6 @@ public class Services
     [PluginService] internal static IDtrBar DtrBar { get; private set; }
     [PluginService] internal static IFramework Framework { get; private set; }
     [PluginService] internal static IGameConfig GameConfig { get; private set; }
+    [PluginService] internal static INotificationManager NotificationManager { get; private set; }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }

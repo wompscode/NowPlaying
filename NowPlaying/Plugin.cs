@@ -1,12 +1,14 @@
 ﻿using System;
-using System.ComponentModel;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Command;
 using Dalamud.Game.Config;
 using Dalamud.Plugin;
 using Dalamud.Utility;
 using Dalamud.Game.Gui.Dtr;
+using Dalamud.Interface.ImGuiNotification;
 using NowPlaying.MediaControllers;
+using Notification = Dalamud.Interface.ImGuiNotification.Notification;
 
 namespace NowPlaying;
 
@@ -127,7 +129,41 @@ public sealed class Plugin : IDalamudPlugin
             MediaController = new NpsmMediaController();
 
         MediaController.OnUpdated += OnMediaControllerUpdated;
-        MediaController.Start();
+
+        try
+        {
+            MediaController.Start();
+        }
+        catch (Tmds.DBus.Protocol.DBusConnectionException e)
+        {
+            var notification = new Notification
+            {
+                Type = NotificationType.Error,
+                Title = "Failed to connect to media players",
+                Content = e.InnerException is SocketException { SocketErrorCode: SocketError.AddressFamilyNotSupported }
+                              ? "Cannot connect to media players because Unix sockets are not supported on this version of Wine/Proton. Please try another version of Wine/Proton."
+                              : "An unknown error occured, check logs for details.",
+                Minimized = false,
+                InitialDuration = TimeSpan.MaxValue,
+            };
+
+            Services.NotificationManager.AddNotification(notification);
+            throw;
+        }
+        catch (Exception)
+        {
+            var notification = new Notification
+            {
+                Type = NotificationType.Error,
+                Title = "Failed to connect to media players",
+                Content = "An unknown error occured, check logs for details.",
+                Minimized = false,
+                InitialDuration = TimeSpan.MaxValue,
+            };
+
+            Services.NotificationManager.AddNotification(notification);
+            throw;
+        }
     }
 
     private void OnMediaControllerUpdated(object? sender, EventArgs args)

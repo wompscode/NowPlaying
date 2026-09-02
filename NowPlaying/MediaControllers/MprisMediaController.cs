@@ -23,6 +23,7 @@ public class MprisMediaController : IMediaController
     
     public MprisMediaController()
     {
+        Services.PluginLog.Debug("Connecting to the D-Bus session bus: {SessionBusAddress}", DBusAddress.Session!);
         dbus = new DBusConnection(new WineDBusConnectionOptions(DBusAddress.Session!));
     }
 
