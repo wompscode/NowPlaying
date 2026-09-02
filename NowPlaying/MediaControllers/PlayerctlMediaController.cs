@@ -130,6 +130,11 @@ public class PlayerctlMediaController : IMediaController
                 Services.PluginLog.Debug("MediaPlayer2 service removed: {Name}", name);
                 playerNames.Remove(name);
             }
+            else
+            {
+                Services.PluginLog.Debug("MediaPlayer2 NameOwnerChanged: Name={Name} OldOwner={OldOwner} NewOwner={NewOwner}", name, oldOwner, newOwner);
+                return;
+            }
                     
             if (playerNames.Count <= 0)
                 return;
