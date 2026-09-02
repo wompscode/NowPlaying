@@ -9,7 +9,7 @@ using Tmds.DBus.Protocol;
 
 namespace NowPlaying.MediaControllers;
 
-public class PlayerctlMediaController : IMediaController
+public class MprisMediaController : IMediaController
 {
     private readonly DBusConnection dbus;
     private IDisposable? dbusMatchRule;
@@ -21,7 +21,7 @@ public class PlayerctlMediaController : IMediaController
 
     private readonly SemaphoreSlim lockObject = new(1, 1);
     
-    public PlayerctlMediaController()
+    public MprisMediaController()
     {
         dbus = new DBusConnection(new WineDBusConnectionOptions(DBusAddress.Session!));
     }

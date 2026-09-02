@@ -122,7 +122,7 @@ public sealed class Plugin : IDalamudPlugin
         dtrDisplay = new ServerInfoDisplay(this);
 
         if (IsWine)
-            MediaController = new PlayerctlMediaController();
+            MediaController = new MprisMediaController();
         else
             MediaController = new NpsmMediaController();
 
